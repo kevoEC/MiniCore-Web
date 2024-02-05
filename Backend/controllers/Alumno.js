@@ -1,5 +1,7 @@
 const Alumno = require('../models/Alumno');
 
+// Importa el modelo Progreso si aún no lo has hecho
+const Progreso = require('../models/Progreso');
 
 // Crear un nuevo alumno
 async function createAlumno(req, res) {
@@ -29,15 +31,27 @@ async function createAlumno(req, res) {
 }
 
 // Listar todos los alumnos
+
+
+// Obtener todos los alumnos con detalles de progreso
 async function getAlumnos(req, res) {
     try {
-        const alumnos = await Alumno.find();
+        // Utiliza populate para obtener los detalles de progreso de cada alumno,
+        // incluyendo las notas asociadas a cada progreso
+        const alumnos = await Alumno.find().populate({
+            path: 'progresos',
+            populate: {
+                path: 'notas'
+            }
+        });
         res.status(200).send(alumnos);
     } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Error al obtener los alumnos" });
     }
 }
+
+
 
 // Actualizar un alumno
 async function updateAlumno(req, res) {

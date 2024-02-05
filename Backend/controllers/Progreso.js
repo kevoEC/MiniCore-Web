@@ -15,6 +15,11 @@ async function createProgreso(req, res) {
 
         let progreso = new Progreso({ tipo, fechaInicio, fechaFin, alumno: alumno });
         await progreso.save();
+
+        // GUARDAR REFERENCIA EN ALUMNO
+        alumnoExistente.progresos.push(progreso._id);
+        await alumnoExistente.save();
+
         res.status(201).send(progreso);
     } catch (error) {
         console.error(error);
@@ -35,12 +40,26 @@ async function getProgresos(req, res) {
 
 // Actualizar un progreso
 async function updateProgreso(req, res) {
-    const { id } = req.params;
-    const { tipo, fechaInicio, fechaFin } = req.body;
+    const { progresoId } = req.params;
+    const { tipo, fechaInicio, fechaFin, alumno } = req.body;
+
     try {
-        const updatedProgreso = await Progreso.findByIdAndUpdate(id, { tipo, fechaInicio, fechaFin }, { new: true });
-        if (!updatedProgreso) return res.status(404).send({ message: "Progreso no encontrado" });
-        res.status(200).send(updatedProgreso);
+        // Verificar si existe el progreso
+        const progresoExistente = await Progreso.findById(progresoId);
+
+        if (!progresoExistente) {
+            return res.status(404).send({ message: "Progreso no encontrado" });
+        }
+
+        // Actualizar el progreso
+        progresoExistente.tipo = tipo;
+        progresoExistente.fechaInicio = fechaInicio;
+        progresoExistente.fechaFin = fechaFin;
+        progresoExistente.alumno = alumno;
+
+        await progresoExistente.save();
+
+        res.status(200).send(progresoExistente);
     } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Error al actualizar el progreso" });
@@ -51,14 +70,25 @@ async function updateProgreso(req, res) {
 async function deleteProgreso(req, res) {
     const { id } = req.params;
     try {
+        // Buscar el progreso a eliminar
         const deletedProgreso = await Progreso.findByIdAndDelete(id);
-        if (!deletedProgreso) return res.status(404).send({ message: "Progreso no encontrado" });
+        if (!deletedProgreso) {
+            return res.status(404).send({ message: "Progreso no encontrado" });
+        }
+
+        // Eliminar la referencia del progreso en el array de progresos del alumno
+        await Alumno.updateOne(
+            { progresos: id }, // Buscar el progreso por su ID en el array de progresos del alumno
+            { $pull: { progresos: id } } // Eliminar el progreso del array de progresos
+        );
+
         res.status(200).send({ message: "Progreso eliminado correctamente" });
     } catch (error) {
         console.error(error);
         res.status(500).send({ message: "Error al eliminar el progreso" });
     }
 }
+
 
 module.exports = {
     createProgreso,
